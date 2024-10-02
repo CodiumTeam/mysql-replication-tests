@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "replication-demo"
+version = "0.1.0"
+description = ""
+authors = ["Hugo Chinchilla <hugo@codium.team>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+pytest = "^8.3.3"
+testcontainers = "^4.8.1"
+sqlalchemy = "^2.0.35"
+pymysql = "^1.1.1"
+cryptography = "^43.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
