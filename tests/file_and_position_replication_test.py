@@ -12,7 +12,7 @@ from replication import (
     setup_replication,
 )
 
-def abspath(filename):
+def resource_path(filename):
     return pathlib.Path(__file__).parent.parent.resolve() / filename
 
 
@@ -21,14 +21,23 @@ def network():
     with Network() as replication_network:
         yield replication_network
 
+
 @pytest.fixture()
 def source(request, network):
-    yield from mysql_container_connection(network, "source", abspath("configs/source/"))
+    yield from mysql_container_connection(
+        network=network,
+        name="source",
+        config_dir=resource_path("configs/source/")
+    )
 
 
 @pytest.fixture()
 def replica(request, network):
-    yield from mysql_container_connection(network, "replica", abspath("configs/replica/"))
+    yield from mysql_container_connection(
+        network=network,
+        name="replica",
+        config_dir=resource_path("configs/replica/")
+    )
 
 
 def mysql_container_connection(network, name, config_dir):
