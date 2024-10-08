@@ -3,16 +3,20 @@ import time
 import sqlalchemy
 import pytest
 from testcontainers.mysql import MySqlContainer
+from testcontainers.core.network import Network
 
 from replication import (
-    create_replication_user,
     Connection,
-    MYSQL_IMAGE,
-    MYSQL_NET,
     resource_path,
     Credentials,
     ReplicationSource,
 )
+
+
+MYSQL_IMAGE = "mysql:8.4.2"
+MYSQL_NET = Network().create()
+REPLICATION_CREDENTIALS = Credentials('replicator', 'replipassword')
+
 
 @pytest.fixture()
 def source(request):
@@ -49,24 +53,23 @@ def test_connect_a_replica(source: Connection, replica: Connection):
     assert replica.show_variable('version').startswith('8.4.')
     assert source.show_variable('server_id') == '1'
     assert replica.show_variable('server_id') == '2'
-
-    credentials = Credentials('replicator', 'replipassword')
-    create_replication_user(source, credentials)
-    replication_source = ReplicationSource.from_source(source, credentials)
+    replication_source = ReplicationSource.from_source(source, REPLICATION_CREDENTIALS)
+    replication_source.setup_credentials()
     replication_source.setup_target(replica)
     replica.execute("start replica")
-
     source.execute('create database db')
     source.execute('use db')
     source.execute('create table example_table (example_column varchar(30))')
     source.execute('insert into example_table values ("one"), ("two")')
-
     time.sleep(.2)
+
     result = replica.execute('select * from db.example_table')
+
     assert result.fetchall() == [
         ("one",),
         ("two",),
     ]
+
 
 def test_load_backup(source: Connection):
     source.execute('create database example')
@@ -76,3 +79,5 @@ def test_load_backup(source: Connection):
     result = source.execute('select 1 from example.pet where name="Fluffy"')
 
     assert result.fetchone() == (1,)
+
+

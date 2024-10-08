@@ -3,10 +3,7 @@ from dataclasses import dataclass
 
 import sqlalchemy
 import sqlparse
-from testcontainers.core.network import Network
 
-MYSQL_IMAGE = "mysql:8.4.2"
-MYSQL_NET = Network().create()
 
 def resource_path(filename):
     return pathlib.Path(__file__).parent.parent.resolve() / filename
@@ -21,29 +18,6 @@ class Credentials:
 class BinlogRef:
     filename: str
     position: int
-
-
-class ReplicationSource:
-    def __init__(self, conn: 'Connection', credentials: Credentials, binlog: BinlogRef):
-        self.connection = conn
-        self.credentials = credentials
-        self.binlog = binlog
-
-    @classmethod
-    def from_source(cls, conn: 'Connection', credentials: Credentials):
-        return cls(conn, credentials, conn.get_binlog_reference())
-
-    def setup_target(self, target: 'Connection'):
-        target.execute(f"""
-            change replication source to
-            GET_SOURCE_PUBLIC_KEY=1,
-            SOURCE_HOST='{self.connection.get_host()}',
-            SOURCE_PORT={self.connection.get_port()},
-            SOURCE_USER='{self.credentials.username}',
-            SOURCE_PASSWORD='{self.credentials.password}',
-            SOURCE_LOG_FILE='{self.binlog.filename}',
-            SOURCE_LOG_POS={self.binlog.position}
-        """)
 
 
 class Connection:
@@ -81,15 +55,39 @@ class Connection:
         return BinlogRef(filename=file, position=position)
 
 
-def create_replication_user(connection: Connection, credentials: Credentials, host='%'):
-    connection.execute(f"""
-        create user '{credentials.username}'@'{host}'
-        identified by '{credentials.password}'
-    """)
-    connection.execute(f"""
-        grant replication slave on *.*
-        to '{credentials.username}'@'{host}'
-    """)
-    connection.execute("flush privileges")
+class ReplicationSource:
+    def __init__(self, conn: Connection, credentials: Credentials, binlog: BinlogRef):
+        self.connection = conn
+        self.credentials = credentials
+        self.binlog = binlog
 
+    @classmethod
+    def from_source(cls, conn: Connection, credentials: Credentials):
+        return cls(conn, credentials, conn.get_binlog_reference())
 
+    def setup_credentials(self, host='%'):
+        self.connection.execute(
+            f"""
+            create user '{self.credentials.username}'@'{host}'
+            identified by '{self.credentials.password}'
+        """
+        )
+        self.connection.execute(
+            f"""
+            grant replication slave on *.*
+            to '{self.credentials.username}'@'{host}'
+        """
+        )
+        self.connection.execute("flush privileges")
+
+    def setup_target(self, target: Connection):
+        target.execute(f"""
+            change replication source to
+            GET_SOURCE_PUBLIC_KEY=1,
+            SOURCE_HOST='{self.connection.get_host()}',
+            SOURCE_PORT={self.connection.get_port()},
+            SOURCE_USER='{self.credentials.username}',
+            SOURCE_PASSWORD='{self.credentials.password}',
+            SOURCE_LOG_FILE='{self.binlog.filename}',
+            SOURCE_LOG_POS={self.binlog.position}
+        """)
