@@ -1,51 +1,37 @@
-import pathlib
 import time
 
 import sqlalchemy
 import pytest
 from testcontainers.mysql import MySqlContainer
-from testcontainers.core.network import Network
 
 from replication import (
     create_replication_user,
     Connection,
-    setup_replication,
+    setup_replication, MYSQL_IMAGE, MYSQL_NET, resource_path,
 )
 
-def resource_path(filename):
-    return pathlib.Path(__file__).parent.parent.resolve() / filename
-
-
-@pytest.fixture(scope="session")
-def network():
-    with Network() as replication_network:
-        yield replication_network
-
-
 @pytest.fixture()
-def source(request, network):
+def source(request):
     yield from mysql_container_connection(
-        network=network,
         name="source",
         config_dir=resource_path("configs/source/")
     )
 
 
 @pytest.fixture()
-def replica(request, network):
+def replica(request):
     yield from mysql_container_connection(
-        network=network,
         name="replica",
         config_dir=resource_path("configs/replica/")
     )
 
 
-def mysql_container_connection(network, name, config_dir):
+def mysql_container_connection(name, config_dir):
     container_factory = MySqlContainer(
-        image="mysql:8.4.2",
+        image=MYSQL_IMAGE,
         username="root",
-        root_password="secret"
-    ).with_network(network)\
+        root_password="secret",
+    ).with_network(MYSQL_NET)\
      .with_name(name)\
      .with_volume_mapping(config_dir, "/etc/mysql/conf.d/", "ro")
 
@@ -74,3 +60,12 @@ def test_connect_a_replica(source: Connection, replica: Connection):
         ("one",),
         ("two",),
     ]
+
+def test_load_backup(source: Connection):
+    source.execute('create database example')
+    source.execute('use example')
+    source.execute_from_file(resource_path('seeds/menagerie.sql'))
+
+    result = source.execute('select 1 from example.pet where name="Fluffy"')
+
+    assert result.fetchone() == (1,)

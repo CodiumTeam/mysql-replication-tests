@@ -1,4 +1,19 @@
+import logging
+import pathlib
+
 import sqlalchemy
+import sqlparse
+from testcontainers.core.network import Network
+
+logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
+
+MYSQL_IMAGE = "mysql:8.4.2"
+MYSQL_NET = Network().create()
+
+def resource_path(filename):
+    return pathlib.Path(__file__).parent.parent.resolve() / filename
+
 
 class Connection:
     def __init__(self, engine, container):
@@ -8,6 +23,12 @@ class Connection:
     def execute(self, text):
         with self._engine.begin() as connection:
             return connection.execute(sqlalchemy.text(text))
+
+    def execute_from_file(self, path):
+        with open(path) as file:
+            statements = sqlparse.split(sqlparse.format(file.read()))
+            for statement in statements:
+                self.execute(statement)
 
     def get_host(self):
         return self._container._name
@@ -57,3 +78,5 @@ def setup_replication(source: Connection, replica: Connection, username, passwor
     """)
     replica.execute("start replica")
     return replica.execute("show replica status")
+
+
