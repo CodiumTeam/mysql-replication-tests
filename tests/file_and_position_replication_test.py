@@ -7,7 +7,11 @@ from testcontainers.mysql import MySqlContainer
 from replication import (
     create_replication_user,
     Connection,
-    setup_replication, MYSQL_IMAGE, MYSQL_NET, resource_path,
+    MYSQL_IMAGE,
+    MYSQL_NET,
+    resource_path,
+    Credentials,
+    ReplicationSource,
 )
 
 @pytest.fixture()
@@ -46,8 +50,11 @@ def test_connect_a_replica(source: Connection, replica: Connection):
     assert source.show_variable('server_id') == '1'
     assert replica.show_variable('server_id') == '2'
 
-    create_replication_user(source, 'replicator', 'replipassword', '%')
-    setup_replication(source, replica, 'replicator', 'replipassword')
+    credentials = Credentials('replicator', 'replipassword')
+    create_replication_user(source, credentials)
+    replication_source = ReplicationSource.from_source(source, credentials)
+    replication_source.setup_target(replica)
+    replica.execute("start replica")
 
     source.execute('create database db')
     source.execute('use db')
