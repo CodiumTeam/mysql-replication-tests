@@ -20,6 +20,9 @@ REPLICATION_CREDENTIALS = Credentials('replicator', 'replipassword')
 
 @pytest.fixture()
 def source(request):
+    """
+    A database instance intended to be the source of a replication
+    """
     yield from mysql_container_connection(
         name="source",
         config_dir=resource_path("configs/source/")
@@ -27,7 +30,21 @@ def source(request):
 
 
 @pytest.fixture()
+def loaded_source(request, source):
+    """
+    A source database preloaded with the menagerie dataset
+    """
+    source.execute('create database example')
+    source.execute('use example')
+    source.execute_from_file(resource_path('seeds/menagerie.sql'))
+    yield source
+
+
+@pytest.fixture()
 def replica(request):
+    """
+    A database instance intended to be the replica of a replication source
+    """
     yield from mysql_container_connection(
         name="replica",
         config_dir=resource_path("configs/replica/")
@@ -71,12 +88,8 @@ def test_connect_a_replica(source: Connection, replica: Connection):
     ]
 
 
-def test_load_backup(source: Connection):
-    source.execute('create database example')
-    source.execute('use example')
-    source.execute_from_file(resource_path('seeds/menagerie.sql'))
-
-    result = source.execute('select 1 from example.pet where name="Fluffy"')
+def test_load_backup(loaded_source: Connection):
+    result = loaded_source.execute('select 1 from example.pet where name="Fluffy"')
 
     assert result.fetchone() == (1,)
 
