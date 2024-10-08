@@ -102,16 +102,26 @@ def test_load_backup(loaded_source: Connection):
 
 
 def test_setup_replication_from_source_with_existent_data(loaded_source: Connection, replica: Connection):
+    # Setup replication
     replication_source = ReplicationSource.from_source(loaded_source, REPLICATION_CREDENTIALS)
     replication_source.setup_credentials()
     replication_source.setup_target(replica)
+    # Backup master data
     backup_file = resource_path('.out/source.sql')
     loaded_source.dump('example', backup_file, '--single-transaction --master-data')
-    replica.execute('create database example_replica')
-    replica.execute('use example_replica')
+    # Insert data in the master that will not be in the backup
+    loaded_source.execute('use example')
+    loaded_source.execute("insert into pet values ('Smity','Hugo','dog','m','2013-09-07',NULL)")
+    # Load the backup in the slave
+    replica.execute('create database example')
+    replica.execute('use example')
     replica.execute_from_file(backup_file)
+    # Start slave replication
     replica.execute("start replica")
+    # Wait for replication to carry changes from source to replica
+    time.sleep(.2)
 
-    result = replica.execute('select 1 from example_replica.pet where name="Fluffy"')
+    # Search for an entry added to the source after the backup was done
+    result = replica.execute('select 1 from example.pet where name="Smity"')
 
     assert result.fetchone() == (1,)
