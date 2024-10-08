@@ -586,6 +586,21 @@ pymysql = ["pymysql"]
 sqlcipher = ["sqlcipher3_binary"]
 
 [[package]]
+name = "sqlparse"
+version = "0.5.1"
+description = "A non-validating SQL parser."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "sqlparse-0.5.1-py3-none-any.whl", hash = "sha256:773dcbf9a5ab44a090f3441e2180efe2560220203dc2f8c0b0fa141e18b505e4"},
+    {file = "sqlparse-0.5.1.tar.gz", hash = "sha256:bb6b4df465655ef332548e24f08e205afc81b9ab86cb1c45657a7ff173a3a00e"},
+]
+
+[package.extras]
+dev = ["build", "hatch"]
+doc = ["sphinx"]
+
+[[package]]
 name = "testcontainers"
 version = "4.8.1"
 description = "Python library for throwaway instances of anything that can run in a Docker container"
@@ -747,4 +762,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.12"
-content-hash = "f99e662fa4c5853ceecdee1ac9c6155dbe29003eeabd392bb19ef6cc63e7eec7"
+content-hash = "d019fee5c47a64780a1eeb1ba184336c0ffa5c360424b5f2b1645d525c811e78"
