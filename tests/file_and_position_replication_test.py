@@ -55,7 +55,7 @@ def mysql_container_connection(name, config_dir):
     container_factory = MySqlContainer(
         image=MYSQL_IMAGE,
         username="root",
-        root_password="secret",
+        password="secret",
     ).with_network(MYSQL_NET)\
     .with_name(name)\
     .with_volume_mapping(
