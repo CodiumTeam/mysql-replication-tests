@@ -57,8 +57,15 @@ def mysql_container_connection(name, config_dir):
         username="root",
         root_password="secret",
     ).with_network(MYSQL_NET)\
-     .with_name(name)\
-     .with_volume_mapping(config_dir, "/etc/mysql/conf.d/", "ro")
+    .with_name(name)\
+    .with_volume_mapping(
+        config_dir,
+        "/etc/mysql/conf.d/", "ro"
+    )\
+    .with_volume_mapping(
+        resource_path('.out/'),
+        resource_path('.out/'), "rw"
+    )
 
     with container_factory as container:
         engine = sqlalchemy.create_engine(container.get_connection_url())
@@ -94,3 +101,17 @@ def test_load_backup(loaded_source: Connection):
     assert result.fetchone() == (1,)
 
 
+def test_setup_replication_from_source_with_existent_data(loaded_source: Connection, replica: Connection):
+    replication_source = ReplicationSource.from_source(loaded_source, REPLICATION_CREDENTIALS)
+    replication_source.setup_credentials()
+    replication_source.setup_target(replica)
+    backup_file = resource_path('.out/source.sql')
+    loaded_source.dump('example', backup_file, '--single-transaction --master-data')
+    replica.execute('create database example_replica')
+    replica.execute('use example_replica')
+    replica.execute_from_file(backup_file)
+    replica.execute("start replica")
+
+    result = replica.execute('select 1 from example_replica.pet where name="Fluffy"')
+
+    assert result.fetchone() == (1,)

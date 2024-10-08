@@ -6,7 +6,7 @@ import sqlparse
 
 
 def resource_path(filename):
-    return pathlib.Path(__file__).parent.parent.resolve() / filename
+    return str(pathlib.Path(__file__).parent.parent.resolve() / filename)
 
 @dataclass
 class Credentials:
@@ -53,6 +53,9 @@ class Connection:
         self.execute("unlock tables")
 
         return BinlogRef(filename=file, position=position)
+
+    def dump(self, database: str, output_path: str, dump_flags: str = ''):
+        self._container.exec(f'mysqldump -u{self._container.username} -p{self._container.root_password} -r {output_path} {dump_flags} {database}')
 
 
 class ReplicationSource:
