@@ -1,6 +1,2 @@
 [mysqld]
 server-id = 1
-
-binlog_do_db = db
-binlog_do_db = db_1
-binlog_do_db = db_2
