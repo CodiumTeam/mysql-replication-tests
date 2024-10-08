@@ -87,6 +87,7 @@ class ReplicationSource:
         target.execute(f"""
             change replication source to
             GET_SOURCE_PUBLIC_KEY=1,
+            SOURCE_SSL=1,
             SOURCE_HOST='{self.connection.get_host()}',
             SOURCE_PORT={self.connection.get_port()},
             SOURCE_USER='{self.credentials.username}',
